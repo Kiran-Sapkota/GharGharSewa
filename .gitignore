@@ -1,0 +1,21 @@
+# Node
+node_modules
+
+# Environment files
+.env
+
+# Python virtual environment
+venv
+chatbot/venv
+
+# Build files
+dist
+build
+coverage
+
+# VS Code
+.vscode
+
+# Python cache
+__pycache__
+*.pyc

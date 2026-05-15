@@ -1,0 +1,24 @@
+version: "3.1"
+
+intents:
+  - greet
+  - minor_issue
+  - major_issue
+  - goodbye
+
+responses:
+  utter_greet:
+    - text: "Namaste! I am GharGhar Sewa chatbot. Tell me your home service problem."
+
+  utter_minor_issue:
+    - text: "This looks like a minor issue. Please check the basic switch, connection, or blockage first. If the problem continues, you can request a service provider."
+
+  utter_major_issue:
+    - text: "This seems like a major issue. I recommend booking a verified service provider."
+
+  utter_goodbye:
+    - text: "Thank you for using GharGhar Sewa."
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

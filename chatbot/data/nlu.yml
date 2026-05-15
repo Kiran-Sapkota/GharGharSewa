@@ -1,0 +1,44 @@
+version: "3.1"
+
+nlu:
+  - intent: greet
+    examples: |
+      - hello
+      - hi
+      - hey
+      - namaste
+      - good morning
+      - good evening
+
+  - intent: minor_issue
+    examples: |
+      - my light bulb is not working
+      - fan is making noise
+      - tap is leaking slowly
+      - my switch is loose
+      - water is dripping from tap
+      - my room light is flickering
+      - the sink is blocked a little
+      - door lock is tight
+      - pipe is leaking slowly
+
+  - intent: major_issue
+    examples: |
+      - there is a short circuit
+      - water pipe burst
+      - toilet is overflowing
+      - full house wiring problem
+      - there is heavy water leakage
+      - main switch is burning
+      - ceiling is leaking badly
+      - bathroom pipe is broken
+      - my house has no electricity
+      - plumber needed urgently
+
+  - intent: goodbye
+    examples: |
+      - bye
+      - goodbye
+      - see you
+      - thank you
+      - thanks
