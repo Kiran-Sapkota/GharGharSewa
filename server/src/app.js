@@ -9,6 +9,7 @@ const userReviewRoutes = require("./routes/userReviewRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
 const chatbotRoutes = require("./routes/chatbotRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const serviceCategoryRoutes = require("./routes/serviceCategoryRoutes");
   
 
 const app = express();
@@ -41,6 +42,7 @@ app.use("/api/user-reviews", userReviewRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/services", serviceCategoryRoutes);
 
 
 module.exports = app;

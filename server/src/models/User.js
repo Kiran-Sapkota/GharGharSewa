@@ -54,6 +54,11 @@ totalReviews: {
       type: Boolean,
       default: true,
     },
+
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

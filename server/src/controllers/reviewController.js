@@ -2,6 +2,7 @@ const Review = require("../models/Review");
 const Booking = require("../models/Booking");
 const ServiceProvider = require("../models/ServiceProvider");
 const User = require("../models/User");
+const { sendNewReviewEmail } = require("../utils/emailService");
 
 // Submit review
 const submitReview = async (req, res) => {
@@ -82,6 +83,18 @@ const submitReview = async (req, res) => {
     await Booking.findByIdAndUpdate(bookingId, {
       isReviewed: true,
     });
+
+    const providerUser = await User.findById(providerProfile.user);
+    if (providerUser?.email) {
+      sendNewReviewEmail(
+        providerUser.email,
+        providerProfile.name || providerUser.name,
+        rating,
+        comment
+      ).catch((err) =>
+        console.error("Review notification email failed:", err.message)
+      );
+    }
 
     res.status(201).json({
       success: true,

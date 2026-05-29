@@ -26,6 +26,14 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
 
+    latitude: {
+      type: Number,
+    },
+
+    longitude: {
+      type: Number,
+    },
+
     totalPrice: {
       type: Number,
       required: true,
@@ -45,6 +53,15 @@ const bookingSchema = new mongoose.Schema(
     isReviewed: {
       type: Boolean,
       default: false,
+    },
+
+    isArchivedByProvider: {
+      type: Boolean,
+      default: false,
+    },
+
+    archivedAt: {
+      type: Date,
     },
   },
   { timestamps: true }

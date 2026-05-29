@@ -66,8 +66,15 @@ const Register = () => {
       };
 
       const res = await registerUser(payload);
-      login(res.data.user, res.data.token);
 
+      if (res.data.requiresVerification) {
+        navigate("/verify-email", {
+          state: { email: res.data.email, role: payload.role },
+        });
+        return;
+      }
+
+      login(res.data.user, res.data.token);
       if (res.data.user.role === "provider") {
         navigate("/provider-dashboard");
       } else if (res.data.user.role === "admin") {
@@ -116,6 +123,7 @@ const Register = () => {
                     placeholder="John Doe"
                     value={formData.name}
                     onChange={handleChange}
+                    autoFocus
                     className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700 pl-11 pr-4 py-3 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:border-green-500 dark:text-white outline-none transition-all font-medium"
                   />
                 </div>

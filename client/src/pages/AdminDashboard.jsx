@@ -3,6 +3,10 @@ import {
   getAllUsers,
   getAllProvidersAdmin,
   getAllBookingsAdmin,
+  getAllServicesAdmin,
+  createServiceCategory,
+  updateServiceCategory,
+  deleteServiceCategory,
   verifyProvider,
   unverifyProvider,
   deactivateAccount,
@@ -17,29 +21,49 @@ import {
   HiOutlineClipboardCheck, 
   HiOutlineRefresh,
   HiOutlineShieldCheck,
-  HiOutlineSearch
+  HiOutlineSearch,
+  HiOutlinePlus,
+  HiOutlineCollection,
+  HiOutlinePencil,
+  HiOutlineTrash,
+  HiOutlineX
 } from 'react-icons/hi';
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [providers, setProviders] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [services, setServices] = useState([]);
   const [activeTab, setActiveTab] = useState("users");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const emptyServiceForm = {
+    name: "",
+    label: "",
+    description: "",
+    icon: "🔧",
+    isActive: true,
+  };
+  const [serviceForm, setServiceForm] = useState(emptyServiceForm);
+  const [editingServiceId, setEditingServiceId] = useState(null);
+  const [showDeleteServiceModal, setShowDeleteServiceModal] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState(null);
+  const [deleteServiceLoading, setDeleteServiceLoading] = useState(false);
 
   const fetchAdminData = async () => {
     try {
       setLoading(true);
-      const [usersRes, providersRes, bookingsRes] = await Promise.all([
+      const [usersRes, providersRes, bookingsRes, servicesRes] = await Promise.all([
         getAllUsers(),
         getAllProvidersAdmin(),
         getAllBookingsAdmin(),
+        getAllServicesAdmin(),
       ]);
       setUsers(usersRes.data.users || []);
       setProviders(providersRes.data.providers || []);
       setBookings(bookingsRes.data.bookings || []);
+      setServices(servicesRes.data.categories || []);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load admin data");
     } finally {
@@ -91,10 +115,89 @@ const AdminDashboard = () => {
     }
   };
 
+  const resetServiceForm = () => {
+    setServiceForm(emptyServiceForm);
+    setEditingServiceId(null);
+  };
+
+  const handleServiceSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    try {
+      if (editingServiceId) {
+        await updateServiceCategory(editingServiceId, serviceForm);
+        setMessage("Service updated! ✅");
+      } else {
+        await createServiceCategory(serviceForm);
+        setMessage("New service added! ✅");
+      }
+      resetServiceForm();
+      fetchAdminData();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save service");
+    }
+  };
+
+  const handleEditService = (service) => {
+    setEditingServiceId(service._id);
+    setServiceForm({
+      name: service.name,
+      label: service.label,
+      description: service.description || "",
+      icon: service.icon || "🔧",
+      isActive: service.isActive,
+    });
+    setMessage("");
+    setError("");
+  };
+
+  const openDeleteServiceModal = (service) => {
+    setServiceToDelete(service);
+    setShowDeleteServiceModal(true);
+    setError("");
+    setMessage("");
+  };
+
+  const closeDeleteServiceModal = () => {
+    setShowDeleteServiceModal(false);
+    setServiceToDelete(null);
+  };
+
+  const confirmDeleteService = async () => {
+    if (!serviceToDelete) return;
+    try {
+      setDeleteServiceLoading(true);
+      await deleteServiceCategory(serviceToDelete._id);
+      setMessage("Service deleted! 🗑️");
+      if (editingServiceId === serviceToDelete._id) resetServiceForm();
+      closeDeleteServiceModal();
+      fetchAdminData();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete service");
+      closeDeleteServiceModal();
+    } finally {
+      setDeleteServiceLoading(false);
+    }
+  };
+
+  const handleToggleServiceActive = async (service) => {
+    setError("");
+    setMessage("");
+    try {
+      await updateServiceCategory(service._id, { isActive: !service.isActive });
+      setMessage(service.isActive ? "Service deactivated." : "Service activated! ✅");
+      fetchAdminData();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to update service status");
+    }
+  };
+
   const stats = [
     { label: 'Platform Users', value: users.length, icon: HiOutlineUsers, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
     { label: 'Service Pros', value: providers.length, icon: HiOutlineUserGroup, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
     { label: 'System Bookings', value: bookings.length, icon: HiOutlineClipboardCheck, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { label: 'Service Lines', value: services.length, icon: HiOutlineCollection, color: 'text-amber-500', bg: 'bg-amber-500/10' },
   ];
 
   if (loading) {
@@ -120,7 +223,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {stats.map((stat, i) => (
           <Card key={i} className="group hover:-translate-y-2 transition-all duration-300">
             <CardBody className="flex items-center gap-6">
@@ -148,7 +251,7 @@ const AdminDashboard = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-2">
           <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-2xl w-fit">
-            {['users', 'providers', 'bookings'].map((tab) => (
+            {['users', 'providers', 'bookings', 'services'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -167,6 +270,7 @@ const AdminDashboard = () => {
             <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               placeholder="Search records..." 
+              autoFocus
               className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent pl-11 pr-4 py-3 rounded-2xl focus:bg-white dark:focus:bg-slate-800 focus:border-emerald-500 outline-none transition-all text-sm font-bold"
             />
           </div>
@@ -306,9 +410,187 @@ const AdminDashboard = () => {
                 </TBody>
               </Table>
             )}
+
+            {activeTab === "services" && (
+              <div className="space-y-10 p-6">
+                <form onSubmit={handleServiceSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-700">
+                  <div className="md:col-span-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                        {editingServiceId ? (
+                          <HiOutlinePencil className="text-amber-500" />
+                        ) : (
+                          <HiOutlinePlus className="text-emerald-500" />
+                        )}
+                        {editingServiceId ? "Edit Service" : "Add New Service"}
+                      </h3>
+                      <p className="text-sm font-bold text-slate-400 mt-1">Slug (name) is stored lowercase, e.g. ac repair</p>
+                    </div>
+                    {editingServiceId && (
+                      <Button type="button" variant="secondary" onClick={resetServiceForm}>
+                        <HiOutlineX className="mr-2" size={18} />
+                        Cancel Edit
+                      </Button>
+                    )}
+                  </div>
+                  <input
+                    required
+                    placeholder="Slug (e.g. ac repair)"
+                    value={serviceForm.name}
+                    onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
+                    className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 px-6 py-4 rounded-2xl font-bold outline-none focus:border-emerald-500"
+                  />
+                  <input
+                    required
+                    placeholder="Display label (e.g. AC Repair)"
+                    value={serviceForm.label}
+                    onChange={(e) => setServiceForm({ ...serviceForm, label: e.target.value })}
+                    className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 px-6 py-4 rounded-2xl font-bold outline-none focus:border-emerald-500"
+                  />
+                  <input
+                    placeholder="Icon (emoji)"
+                    value={serviceForm.icon}
+                    onChange={(e) => setServiceForm({ ...serviceForm, icon: e.target.value })}
+                    className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 px-6 py-4 rounded-2xl font-bold outline-none focus:border-emerald-500"
+                  />
+                  <input
+                    placeholder="Short description"
+                    value={serviceForm.description}
+                    onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
+                    className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 px-6 py-4 rounded-2xl font-bold outline-none focus:border-emerald-500"
+                  />
+                  {editingServiceId && (
+                    <label className="md:col-span-2 flex items-center gap-3 cursor-pointer px-2">
+                      <input
+                        type="checkbox"
+                        checked={serviceForm.isActive}
+                        onChange={(e) => setServiceForm({ ...serviceForm, isActive: e.target.checked })}
+                        className="w-5 h-5 rounded accent-emerald-500"
+                      />
+                      <span className="text-sm font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">
+                        Active (visible on search)
+                      </span>
+                    </label>
+                  )}
+                  <div className="md:col-span-2">
+                    <Button type="submit" className="w-full md:w-auto">
+                      {editingServiceId ? (
+                        <>
+                          <HiOutlinePencil className="mr-2" size={18} />
+                          Save Changes
+                        </>
+                      ) : (
+                        <>
+                          <HiOutlinePlus className="mr-2" size={18} />
+                          Add Service
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+
+                <Table>
+                  <THead>
+                    <TR className="!bg-transparent shadow-none">
+                      <TH>Service</TH>
+                      <TH>Slug</TH>
+                      <TH>Description</TH>
+                      <TH>Status</TH>
+                      <TH className="text-right pr-12">Actions</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {services.map((service) => (
+                      <TR key={service._id} className={editingServiceId === service._id ? "ring-2 ring-amber-400/50" : ""}>
+                        <TD>
+                          <p className="text-base font-black text-slate-800 dark:text-slate-100">
+                            {service.icon} {service.label}
+                          </p>
+                        </TD>
+                        <TD className="font-mono text-sm text-slate-500">{service.name}</TD>
+                        <TD className="text-sm font-bold text-slate-500 max-w-xs truncate">{service.description || "—"}</TD>
+                        <TD>
+                          <Badge variant={service.isActive ? "green" : "gray"}>
+                            {service.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TD>
+                        <TD className="text-right pr-8">
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button size="sm" variant="secondary" onClick={() => handleEditService(service)}>
+                              <HiOutlinePencil size={16} className="mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleToggleServiceActive(service)}
+                            >
+                              {service.isActive ? "Deactivate" : "Activate"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-500 hover:bg-red-50"
+                              onClick={() => openDeleteServiceModal(service)}
+                            >
+                              <HiOutlineTrash size={16} className="mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+            )}
           </CardBody>
         </Card>
       </div>
+
+      {showDeleteServiceModal && serviceToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-800">
+            <div className="space-y-5 text-center">
+              <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center mx-auto">
+                <span className="text-3xl">⚠️</span>
+              </div>
+
+              <h2 className="text-2xl font-black text-slate-800 dark:text-white">
+                Delete Service
+              </h2>
+
+              <p className="text-slate-500 dark:text-slate-400 font-semibold">
+                Are you sure you want to delete{" "}
+                <span className="text-slate-800 dark:text-white font-black">
+                  {serviceToDelete.icon} {serviceToDelete.label}
+                </span>
+                ? This cannot be undone.
+              </p>
+
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={closeDeleteServiceModal}
+                  disabled={deleteServiceLoading}
+                  className="flex-1 py-4 rounded-2xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white font-black"
+                >
+                  No
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmDeleteService}
+                  disabled={deleteServiceLoading}
+                  className="flex-1 py-4 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-black disabled:opacity-60"
+                >
+                  {deleteServiceLoading ? "Deleting..." : "Yes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

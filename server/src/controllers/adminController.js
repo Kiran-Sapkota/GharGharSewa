@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const ServiceProvider = require("../models/ServiceProvider");
 const Booking = require("../models/Booking");
+const { sendProviderApprovedEmail } = require("../utils/emailService");
 
 // Get all users
 const getAllUsers = async (req, res) => {
@@ -21,12 +22,41 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// Get all providers
+// Get all providers (includes users with role=provider who have no profile yet)
 const getAllProvidersAdmin = async (req, res) => {
   try {
     const providers = await ServiceProvider.find()
       .populate("user", "name email role isActive")
       .sort({ createdAt: -1 });
+
+    // Find provider-role users with no ServiceProvider document and auto-create one
+    const providerUserIds = providers.map((p) => p.user?._id?.toString()).filter(Boolean);
+    const orphanUsers = await User.find({
+      role: "provider",
+      isEmailVerified: true,
+      _id: { $nin: providerUserIds },
+    });
+
+    if (orphanUsers.length > 0) {
+      const created = await ServiceProvider.insertMany(
+        orphanUsers.map((u) => ({
+          user: u._id,
+          name: u.name,
+          services: [],
+          location: u.location || {},
+          isVerified: false,
+        }))
+      );
+      // Re-fetch so populated data is correct
+      const updatedProviders = await ServiceProvider.find()
+        .populate("user", "name email role isActive")
+        .sort({ createdAt: -1 });
+      return res.status(200).json({
+        success: true,
+        count: updatedProviders.length,
+        providers: updatedProviders,
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -78,6 +108,16 @@ const verifyProvider = async (req, res) => {
 
     provider.isVerified = true;
     await provider.save();
+
+    const providerUser = await User.findById(provider.user);
+    if (providerUser?.email) {
+      sendProviderApprovedEmail(
+        providerUser.email,
+        provider.name || providerUser.name
+      ).catch((err) =>
+        console.error("Provider approved email failed:", err.message)
+      );
+    }
 
     res.status(200).json({
       success: true,

@@ -5,6 +5,8 @@ const {
   getUserBookings,
   getProviderBookings,
   updateBookingStatus,
+  archiveProviderBooking,
+  unarchiveProviderBooking,
   cancelBooking,
   getBookingById,
 } = require("../controllers/bookingController");
@@ -40,8 +42,6 @@ router.get(
   getProviderBookings
 );
 
-router.get("/:id", protect, getBookingById);
-
 // provider updates status
 router.patch(
   "/:id/status",
@@ -49,6 +49,22 @@ router.patch(
   authorizeRoles("provider"),
   updateBookingStatus
 );
+
+router.patch(
+  "/:id/archive",
+  protect,
+  authorizeRoles("provider"),
+  archiveProviderBooking
+);
+
+router.patch(
+  "/:id/unarchive",
+  protect,
+  authorizeRoles("provider"),
+  unarchiveProviderBooking
+);
+
+router.get("/:id", protect, getBookingById);
 
 // user cancels booking
 router.patch(

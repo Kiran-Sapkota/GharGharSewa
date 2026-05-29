@@ -1,4 +1,9 @@
 const ServiceProvider = require("../models/ServiceProvider");
+const User = require("../models/User");
+const {
+  sendProviderPendingEmail,
+  notifyAdminNewProvider,
+} = require("../utils/emailService");
 
 // Create provider profile
 const createProviderProfile = async (req, res) => {
@@ -22,6 +27,16 @@ const createProviderProfile = async (req, res) => {
       services,
       location,
     });
+
+    const user = await User.findById(req.user._id);
+    if (user?.email) {
+      sendProviderPendingEmail(user.email, name).catch((err) =>
+        console.error("Provider pending email failed:", err.message)
+      );
+      notifyAdminNewProvider(name, user.email).catch((err) =>
+        console.error("Admin notify email failed:", err.message)
+      );
+    }
 
     res.status(201).json({
       success: true,

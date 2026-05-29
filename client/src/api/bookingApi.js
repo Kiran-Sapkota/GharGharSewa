@@ -23,3 +23,11 @@ export const cancelBooking = (bookingId) => {
 export const getBookingById = (bookingId) => {
   return axiosInstance.get(`/bookings/${bookingId}`);
 };
+
+export const archiveProviderBooking = (bookingId) => {
+  return axiosInstance.patch(`/bookings/${bookingId}/archive`);
+};
+
+export const unarchiveProviderBooking = (bookingId) => {
+  return axiosInstance.patch(`/bookings/${bookingId}/unarchive`);
+};

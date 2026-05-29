@@ -1,5 +1,21 @@
 const Booking = require("../models/Booking");
 const ServiceProvider = require("../models/ServiceProvider");
+const User = require("../models/User");
+const { sendNewBookingEmails } = require("../utils/emailService");
+
+const getProviderForUser = async (userId) =>
+  ServiceProvider.findOne({ user: userId });
+
+const assertProviderOwnsBooking = async (booking, userId) => {
+  const provider = await getProviderForUser(userId);
+  if (!provider) {
+    return { ok: false, status: 404, message: "Provider profile not found" };
+  }
+  if (booking.provider.toString() !== provider._id.toString()) {
+    return { ok: false, status: 403, message: "Unauthorized" };
+  }
+  return { ok: true, provider };
+};
 
 // Create booking
 const createBooking = async (req, res) => {
@@ -10,6 +26,8 @@ const createBooking = async (req, res) => {
       serviceDescription,
       bookingDate,
       address,
+      latitude,
+      longitude,
       totalPrice,
     } = req.body;
 
@@ -23,16 +41,95 @@ const createBooking = async (req, res) => {
       });
     }
 
+    if (!providerExists.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "This provider is not approved yet. Please choose another provider.",
+      });
+    }
+
+    if (!providerExists.isAvailable) {
+      return res.status(403).json({
+        success: false,
+        message: "This provider is currently unavailable.",
+      });
+    }
+
+    const matchedService = providerExists.services.find(
+      (service) =>
+        service.category.toLowerCase() === String(serviceCategory).toLowerCase()
+    );
+
+    if (!matchedService) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid service category for this provider.",
+      });
+    }
+
+    if (Number(totalPrice) !== Number(matchedService.price)) {
+      return res.status(400).json({
+        success: false,
+        message: "Price does not match the provider's listed rate.",
+      });
+    }
+
+    const bookingDateObj = new Date(bookingDate);
+    if (Number.isNaN(bookingDateObj.getTime()) || bookingDateObj <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking date and time must be in the future.",
+      });
+    }
+
+    const lat = latitude != null ? Number(latitude) : null;
+    const lng = longitude != null ? Number(longitude) : null;
+
+    if (
+      lat == null ||
+      lng == null ||
+      Number.isNaN(lat) ||
+      Number.isNaN(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please set your service location on the map.",
+      });
+    }
+
     // create booking
     const booking = await Booking.create({
       user: req.user._id,
       provider,
-      serviceCategory,
+      serviceCategory: matchedService.category,
       serviceDescription,
-      bookingDate,
-      address,
-      totalPrice,
+      bookingDate: bookingDateObj,
+      address: String(address).trim(),
+      latitude: lat,
+      longitude: lng,
+      totalPrice: matchedService.price,
     });
+
+    const [customer, providerUser] = await Promise.all([
+      User.findById(req.user._id).select("name email"),
+      User.findById(providerExists.user).select("name email"),
+    ]);
+
+    if (customer?.email && providerUser?.email) {
+      sendNewBookingEmails({
+        providerEmail: providerUser.email,
+        providerName: providerExists.name,
+        userEmail: customer.email,
+        userName: customer.name,
+        booking,
+      }).catch((err) =>
+        console.error("Booking notification emails failed:", err.message)
+      );
+    }
 
     res.status(201).json({
       success: true,
@@ -119,6 +216,14 @@ const updateBookingStatus = async (req, res) => {
       });
     }
 
+    const ownership = await assertProviderOwnsBooking(booking, req.user._id);
+    if (!ownership.ok) {
+      return res.status(ownership.status).json({
+        success: false,
+        message: ownership.message,
+      });
+    }
+
     booking.status = status;
 
     await booking.save();
@@ -175,6 +280,82 @@ const cancelBooking = async (req, res) => {
   }
 };
 
+// Provider archives booking (hide from active list)
+const archiveProviderBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const ownership = await assertProviderOwnsBooking(booking, req.user._id);
+    if (!ownership.ok) {
+      return res.status(ownership.status).json({
+        success: false,
+        message: ownership.message,
+      });
+    }
+
+    booking.isArchivedByProvider = true;
+    booking.archivedAt = new Date();
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Booking archived",
+      booking,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to archive booking",
+      error: error.message,
+    });
+  }
+};
+
+// Provider restores archived booking
+const unarchiveProviderBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const ownership = await assertProviderOwnsBooking(booking, req.user._id);
+    if (!ownership.ok) {
+      return res.status(ownership.status).json({
+        success: false,
+        message: ownership.message,
+      });
+    }
+
+    booking.isArchivedByProvider = false;
+    booking.archivedAt = null;
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Booking restored",
+      booking,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to restore booking",
+      error: error.message,
+    });
+  }
+};
+
 // Get single booking
 const getBookingById = async (req, res) => {
   try {
@@ -205,6 +386,8 @@ module.exports = {
   getUserBookings,
   getProviderBookings,
   updateBookingStatus,
+  archiveProviderBooking,
+  unarchiveProviderBooking,
   cancelBooking,
   getBookingById,
 };

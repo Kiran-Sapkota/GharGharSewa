@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useLocation } from "react-router";
 import { loginUser } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
 import { Card, CardBody } from "../components/ui/Card";
@@ -8,7 +8,9 @@ import { HiOutlineMail, HiOutlineLockClosed, HiOutlineArrowRight } from 'react-i
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+  const successMessage = location.state?.message;
 
   const [formData, setFormData] = useState({
     email: "",
@@ -48,7 +50,12 @@ const Login = () => {
         navigate("/");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed. Please check your credentials.");
+      const data = err.response?.data;
+      if (data?.requiresVerification && data?.email) {
+        navigate("/verify-email", { state: { email: data.email } });
+        return;
+      }
+      setError(data?.message || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -66,6 +73,12 @@ const Login = () => {
             <h1 className="text-4xl font-black text-slate-800 tracking-tight">Welcome Back</h1>
             <p className="text-slate-500 font-medium mt-2">Log in to manage your home services</p>
           </div>
+
+          {successMessage && (
+            <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 p-4 rounded-xl mb-6 text-sm font-bold">
+              {successMessage}
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl mb-6 text-sm font-bold flex items-center gap-2">
@@ -87,6 +100,7 @@ const Login = () => {
                   placeholder="name@example.com"
                   value={formData.email}
                   onChange={handleChange}
+                  autoFocus
                   className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700 pl-11 pr-4 py-3 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:border-green-500 dark:text-white outline-none transition-all font-medium"
                 />
               </div>
@@ -95,7 +109,9 @@ const Login = () => {
             <div className="space-y-1.5">
               <label className="text-sm font-bold text-slate-600 dark:text-slate-400 px-1 flex justify-between">
                 <span>Password</span>
-                <button type="button" className="text-green-600 dark:text-emerald-400 text-xs hover:underline">Forgot?</button>
+                <Link to="/forgot-password" className="text-green-600 dark:text-emerald-400 text-xs hover:underline">
+                  Forgot?
+                </Link>
               </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-green-600 dark:group-focus-within:text-emerald-400 transition-colors">

@@ -116,6 +116,7 @@ const Chatbot = () => {
             placeholder="Describe your home issue..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            autoFocus
             className="flex-1 bg-white dark:bg-slate-800 border-2 border-transparent px-6 py-4 rounded-2xl focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 dark:text-white"
           />
 

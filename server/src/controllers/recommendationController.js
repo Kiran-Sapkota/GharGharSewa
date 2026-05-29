@@ -24,11 +24,12 @@ const getRecommendations = async (req, res) => {
 
         const providers = await ServiceProvider.find({
             isAvailable: true,
+            isVerified: true,
             "services.category": {
                 $regex: category,
                 $options: "i",
             },
-        }).populate("user", "name email rating totalReviews");
+        }).populate("user", "name email rating totalReviews isActive");
 
         const userBookings = await Booking.find({
             user: req.user._id,

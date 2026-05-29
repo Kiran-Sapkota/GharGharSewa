@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Card, CardBody } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
+import { LeafletMap } from "../components/ui/LeafletMap";
+import { getActiveServices } from "../api/serviceApi";
+import { FeedbackModal } from "../components/ui/FeedbackModal";
+import { useFeedbackModal } from "../hooks/useFeedbackModal";
 import { 
   HiOutlineSearch, 
   HiOutlineLocationMarker, 
@@ -21,15 +25,28 @@ const ServiceSearch = () => {
   });
 
   const [error, setError] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const { feedback, close, showWarning } = useFeedbackModal();
 
-  const categories = [
-    { id: "electrician", name: "Electrician" },
-    { id: "plumber", name: "Plumber" },
-    { id: "cleaner", name: "Cleaner" },
-    { id: "carpenter", name: "Carpenter" },
-    { id: "appliance repair", name: "Appliance Repair" },
-    { id: "painter", name: "Painter" },
-  ];
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await getActiveServices();
+        setCategories(
+          (res.data.categories || []).map((cat) => ({
+            id: cat.name,
+            name: cat.label,
+          }))
+        );
+      } catch {
+        setError("Failed to load service categories");
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    loadCategories();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -57,6 +74,31 @@ const ServiceSearch = () => {
     navigate(`/recommendations?${params.toString()}`);
   };
 
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      showWarning(
+        "Location unavailable",
+        "Geolocation is not supported by your browser."
+      );
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setFormData((prev) => ({
+          ...prev,
+          latitude: position.coords.latitude.toFixed(6),
+          longitude: position.coords.longitude.toFixed(6),
+        }));
+      },
+      () => {
+        showWarning(
+          "Location access denied",
+          "Please enable location access in your browser settings and try again."
+        );
+      }
+    );
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-12">
       <div className="text-center space-y-4">
@@ -81,6 +123,7 @@ const ServiceSearch = () => {
           )}
 
           <form onSubmit={handleSearch} className="space-y-10">
+            {/* Row 1: Category + Problem Description side by side */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               {/* Category Picker */}
               <div className="space-y-3">
@@ -93,9 +136,11 @@ const ServiceSearch = () => {
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent px-6 py-4 rounded-2xl focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 dark:text-white appearance-none cursor-pointer"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 px-6 py-4 rounded-2xl focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 dark:text-white appearance-none cursor-pointer"
                   >
-                    <option value="">Choose category...</option>
+                    <option value="">
+                      {loadingCategories ? "Loading services..." : "Choose category..."}
+                    </option>
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
@@ -108,49 +153,64 @@ const ServiceSearch = () => {
                 </div>
               </div>
 
-              {/* Location Lat/Lng */}
+              {/* Problem Description */}
               <div className="space-y-3">
                 <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 flex items-center gap-2">
-                  <HiOutlineLocationMarker size={16} className="text-emerald-500" />
-                  Service Location
+                  <HiOutlineChatAlt size={16} className="text-emerald-500" />
+                  Describe the Issue (Optional)
                 </label>
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="number"
-                    step="any"
-                    name="latitude"
-                    placeholder="Lat"
-                    value={formData.latitude}
-                    onChange={handleChange}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent px-6 py-4 rounded-2xl focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 dark:text-white"
-                  />
-                  <input
-                    type="number"
-                    step="any"
-                    name="longitude"
-                    placeholder="Lng"
-                    value={formData.longitude}
-                    onChange={handleChange}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent px-6 py-4 rounded-2xl focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 dark:text-white"
-                  />
-                </div>
+                <textarea
+                  name="problemDescription"
+                  placeholder="Example: My kitchen tap has been leaking since yesterday..."
+                  value={formData.problemDescription}
+                  onChange={handleChange}
+                  rows="4"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 px-6 py-4 rounded-2xl focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 dark:text-white leading-relaxed resize-none"
+                />
               </div>
             </div>
 
-            {/* Problem Description */}
+            {/* Row 2: Full-width interactive map */}
             <div className="space-y-3">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 flex items-center gap-2">
-                <HiOutlineChatAlt size={16} className="text-emerald-500" />
-                Describe the Issue (Optional)
-              </label>
-              <textarea
-                name="problemDescription"
-                placeholder="Example: My kitchen tap has been leaking since yesterday..."
-                value={formData.problemDescription}
-                onChange={handleChange}
-                rows="4"
-                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent px-8 py-6 rounded-[2rem] focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 dark:text-white leading-relaxed"
-              />
+              <div className="flex items-center justify-between px-1">
+                <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                  <HiOutlineLocationMarker size={16} className="text-emerald-500" />
+                  Pin Your Location
+                </label>
+                <button
+                  type="button"
+                  onClick={handleDetectLocation}
+                  className="text-xs font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-widest hover:underline flex items-center gap-1.5 focus:outline-none transition-all group"
+                >
+                  <HiOutlineLocationMarker className="group-hover:scale-125 transition-transform" size={14} />
+                  Use My Location
+                </button>
+              </div>
+
+              {/* Map */}
+              <div
+                className="rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 shadow-inner"
+                style={{ height: "340px" }}
+              >
+                <LeafletMap
+                  latitude={formData.latitude}
+                  longitude={formData.longitude}
+                  onChange={(lat, lng) =>
+                    setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }))
+                  }
+                />
+              </div>
+
+              {/* Coordinate readout */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <HiOutlineLocationMarker className="text-emerald-500 flex-shrink-0" size={18} />
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                  <span className="text-slate-800 dark:text-white font-black">{Number(formData.latitude).toFixed(4)}°N</span>
+                  {' · '}
+                  <span className="text-slate-800 dark:text-white font-black">{Number(formData.longitude).toFixed(4)}°E</span>
+                  <span className="ml-2 text-slate-400">— Click the map or drag the pin to set your location</span>
+                </p>
+              </div>
             </div>
 
             <Button
@@ -164,6 +224,14 @@ const ServiceSearch = () => {
           </form>
         </CardBody>
       </Card>
+      <FeedbackModal
+        isOpen={feedback.open}
+        onClose={close}
+        variant={feedback.variant}
+        title={feedback.title}
+        message={feedback.message}
+        onConfirm={feedback.onConfirm}
+      />
     </div>
   );
 };

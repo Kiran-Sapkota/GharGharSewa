@@ -11,6 +11,14 @@ const {
 } = require("../controllers/adminController");
 
 const {
+  getAllCategoriesAdmin,
+  getCategoryById,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+} = require("../controllers/serviceCategoryController");
+
+const {
   protect,
   authorizeRoles,
 } = require("../middleware/authMiddleware");
@@ -29,5 +37,11 @@ router.patch("/providers/:providerId/unverify", unverifyProvider);
 
 router.patch("/users/:userId/deactivate", deactivateAccount);
 router.patch("/users/:userId/reactivate", reactivateAccount);
+
+router.get("/services", getAllCategoriesAdmin);
+router.post("/services", createCategory);
+router.get("/services/:id", getCategoryById);
+router.put("/services/:id", updateCategory);
+router.delete("/services/:id", deleteCategory);
 
 module.exports = router;

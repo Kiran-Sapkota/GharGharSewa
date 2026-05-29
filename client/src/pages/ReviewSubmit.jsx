@@ -4,12 +4,14 @@ import { submitProviderReview } from "../api/reviewApi";
 import { getBookingById } from "../api/bookingApi";
 import { Card, CardBody } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { 
-  HiOutlineStar, 
-  HiOutlineChatAlt, 
+import { StarRating } from "../components/ui/StarRating";
+import { FeedbackModal } from "../components/ui/FeedbackModal";
+import { useFeedbackModal } from "../hooks/useFeedbackModal";
+import {
+  HiOutlineChatAlt,
   HiOutlineSparkles,
-  HiOutlineShieldCheck
-} from 'react-icons/hi';
+  HiOutlineShieldCheck,
+} from "react-icons/hi";
 
 const ReviewSubmit = () => {
   const { bookingId } = useParams();
@@ -23,6 +25,7 @@ const ReviewSubmit = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isAlreadyReviewed, setIsAlreadyReviewed] = useState(false);
+  const { feedback, close, showSuccess, showError } = useFeedbackModal();
 
   useEffect(() => {
     const checkBookingStatus = async () => {
@@ -52,8 +55,13 @@ const ReviewSubmit = () => {
     e.preventDefault();
     setError("");
 
-    if (!formData.rating || !formData.comment) {
-      setError("Please provide both a rating and a comment.");
+    if (!formData.rating || formData.rating < 1) {
+      setError("Please select a star rating.");
+      return;
+    }
+
+    if (!formData.comment.trim()) {
+      setError("Please share a short comment about your experience.");
       return;
     }
 
@@ -64,10 +72,16 @@ const ReviewSubmit = () => {
         rating: Number(formData.rating),
         comment: formData.comment,
       });
-      alert("Review submitted! Thank you for helping the community. ✨");
-      navigate("/bookings");
+      showSuccess(
+        "Review submitted!",
+        "Thank you for helping the community.",
+        () => navigate("/bookings")
+      );
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to submit review");
+      showError(
+        "Could not submit review",
+        err.response?.data?.message || "Failed to submit review. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -109,32 +123,22 @@ const ReviewSubmit = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmitReview} className="space-y-8">
-            <div className="space-y-3">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 flex items-center gap-2">
-                <HiOutlineStar size={16} className="text-amber-500" />
-                Overall Satisfaction
+            <div className="space-y-3 py-2">
+              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block text-center">
+                Overall satisfaction
               </label>
-              <div className="grid grid-cols-5 gap-3">
-                {[1, 2, 3, 4, 5].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, rating: num })}
-                    className={`aspect-square rounded-2xl flex items-center justify-center text-xl font-black transition-all ${
-                      formData.rating >= num
-                        ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20 scale-110'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
+              <StarRating
+                value={formData.rating}
+                onChange={(rating) =>
+                  setFormData((prev) => ({ ...prev, rating }))
+                }
+                disabled={loading}
+              />
             </div>
 
             <div className="space-y-3">
               <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1 flex items-center gap-2">
-                <HiOutlineChatAlt size={16} className="text-amber-500" />
+                <HiOutlineChatAlt size={16} className="text-emerald-500" />
                 Detailed Feedback
               </label>
               <textarea
@@ -143,7 +147,7 @@ const ReviewSubmit = () => {
                 onChange={handleChange}
                 placeholder="What did you like or dislike about the service?"
                 rows="5"
-                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent px-8 py-6 rounded-[2rem] focus:bg-white dark:focus:bg-slate-900 focus:border-amber-500 outline-none transition-all font-bold text-slate-700 dark:text-white leading-relaxed"
+                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 px-8 py-6 rounded-[2rem] focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 outline-none transition-all font-bold text-slate-700 dark:text-white leading-relaxed"
               />
             </div>
 
@@ -152,7 +156,7 @@ const ReviewSubmit = () => {
                 type="submit"
                 disabled={loading}
                 size="lg"
-                className="w-full py-5 rounded-[2rem] text-xl bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
+                className="w-full py-5 rounded-[2rem] text-xl"
               >
                 {loading ? "Submitting..." : "Post Review"}
               </Button>
@@ -171,6 +175,15 @@ const ReviewSubmit = () => {
           Public Review
         </div>
       </div>
+
+      <FeedbackModal
+        isOpen={feedback.open}
+        onClose={close}
+        variant={feedback.variant}
+        title={feedback.title}
+        message={feedback.message}
+        onConfirm={feedback.onConfirm}
+      />
     </div>
   );
 };

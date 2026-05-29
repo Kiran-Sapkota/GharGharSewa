@@ -1,5 +1,12 @@
 const express = require("express");
-const { register, login } = require("../controllers/authController");
+const {
+  register,
+  login,
+  verifyEmail,
+  resendVerificationOtp,
+  forgotPassword,
+  resetPassword,
+} = require("../controllers/authController");
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
 
 const ServiceProvider = require("../models/ServiceProvider");
@@ -7,6 +14,10 @@ const ServiceProvider = require("../models/ServiceProvider");
 const router = express.Router();
 
 router.post("/register", register);
+router.post("/verify-email", verifyEmail);
+router.post("/resend-otp", resendVerificationOtp);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 router.post("/login", login);
 
 // Test protected route

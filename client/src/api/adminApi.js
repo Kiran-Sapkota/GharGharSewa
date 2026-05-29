@@ -27,3 +27,23 @@ export const deactivateAccount = (userId) => {
 export const reactivateAccount = (userId) => {
   return axiosInstance.patch(`/admin/users/${userId}/reactivate`);
 };
+
+export const getAllServicesAdmin = () => {
+  return axiosInstance.get("/admin/services");
+};
+
+export const createServiceCategory = (payload) => {
+  return axiosInstance.post("/admin/services", payload);
+};
+
+export const getServiceCategoryById = (id) => {
+  return axiosInstance.get(`/admin/services/${id}`);
+};
+
+export const updateServiceCategory = (id, payload) => {
+  return axiosInstance.put(`/admin/services/${id}`, payload);
+};
+
+export const deleteServiceCategory = (id) => {
+  return axiosInstance.delete(`/admin/services/${id}`);
+};
