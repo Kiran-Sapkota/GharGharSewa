@@ -1,5 +1,8 @@
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+const mongoose = require("mongoose");
 
 const authRoutes = require("./routes/authRoutes");
 const providerRoutes = require("./routes/providerRoutes");
@@ -10,24 +13,45 @@ const recommendationRoutes = require("./routes/recommendationRoutes");
 const chatbotRoutes = require("./routes/chatbotRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const serviceCategoryRoutes = require("./routes/serviceCategoryRoutes");
-  
 
 const app = express();
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-}));
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "https://ghar-ghar-sewa-frontend.vercel.app"
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("GharGhar Sewa Backend is running");
+  const envPath = path.join(__dirname, "..", ".env");
+  const isEnvPresent = fs.existsSync(envPath);
+  const dbState = mongoose.connection.readyState;
+  let dbStatus = "Disconnected";
+  if (dbState === 1) dbStatus = "Connected";
+  else if (dbState === 2) dbStatus = "Connecting";
+  else if (dbState === 3) dbStatus = "Disconnecting";
+
+  res.json({
+    message: "GharGhar Sewa Backend is running",
+    envFilePresent: isEnvPresent,
+    databaseStatus: dbStatus,
+  });
 });
 
 app.get("/.well-known/appspecific/com.chrome.devtools.json", (req, res) => {
@@ -43,6 +67,5 @@ app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/services", serviceCategoryRoutes);
-
 
 module.exports = app;

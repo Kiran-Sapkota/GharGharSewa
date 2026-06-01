@@ -120,7 +120,7 @@ const Register = () => {
                   <input
                     type="text"
                     name="name"
-                    placeholder="John Doe"
+                    placeholder="Enter your full name"
                     value={formData.name}
                     onChange={handleChange}
                     autoFocus
@@ -138,7 +138,7 @@ const Register = () => {
                   <input
                     type="email"
                     name="email"
-                    placeholder="john@example.com"
+                    placeholder="Enter your email address"
                     value={formData.email}
                     onChange={handleChange}
                     className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700 pl-11 pr-4 py-3 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:border-green-500 dark:text-white outline-none transition-all font-medium"
@@ -156,7 +156,7 @@ const Register = () => {
                 <input
                   type="password"
                   name="password"
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700 pl-11 pr-4 py-3 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:border-green-500 dark:text-white outline-none transition-all font-medium"
@@ -195,7 +195,7 @@ const Register = () => {
                 <input
                   type="text"
                   name="address"
-                  placeholder="Kathmandu, Nepal"
+                  placeholder="Enter your address"
                   value={formData.address}
                   onChange={handleChange}
                   className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-50 dark:border-slate-700 pl-11 pr-4 py-3 rounded-xl focus:bg-white dark:focus:bg-slate-900 focus:border-green-500 dark:text-white outline-none transition-all font-medium"
