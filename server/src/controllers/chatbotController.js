@@ -16,7 +16,13 @@ const sendMessageToBot = async (req, res) => {
       message,
     });
 
-    const botReplies = rasaResponse.data.map((reply) => reply.text);
+    const botReplies = rasaResponse.data
+      .map((reply) => reply.text)
+      .filter(Boolean);
+
+    if (botReplies.length === 0) {
+      botReplies.push("Sorry, I didn't understand that. Please describe your home service problem.");
+    }
 
     res.status(200).json({
       success: true,
